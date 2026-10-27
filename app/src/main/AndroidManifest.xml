@@ -33,6 +33,10 @@
             <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
             <meta-data android:name="android.view.im" android:resource="@xml/luma_input_method" />
         </service>
+        <service android:name=".MediaResumeService" android:exported="true"
+            android:label="Luma playback history" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
         <service android:name=".WallpaperDreamService" android:exported="true"
             android:label="@string/wallpaper_dream_name" android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter>

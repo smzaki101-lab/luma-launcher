@@ -2,13 +2,13 @@
 
 **A cinematic, tvOS-inspired home screen for Android TV.** Luma brings a Liquid Glass-inspired UI to your TV: a refined app dock, translucent Control Centre, fluid remote focus, App Switcher, live weather, and Continue Watching when real viewing data is available.
 
-[**Download the updated P6 APK**](https://github.com/argeojerwin-svg/luma-launcher/releases/download/v1.0.10-p6.1/Luma-P6-1.0.10.apk) · [P6 release and downloads](https://github.com/argeojerwin-svg/luma-launcher/releases/tag/v1.0.10-p6.1) · [Quick installation](docs/P6-QUICK-INSTALL.md)
+[**Download the updated P6 APK**](https://github.com/argeojerwin-svg/luma-launcher/releases/download/v1.0.11-p6.1/Luma-P6-1.0.11.apk) · [P6 release and downloads](https://github.com/argeojerwin-svg/luma-launcher/releases/tag/v1.0.11-p6.1) · [Quick installation](docs/P6-QUICK-INSTALL.md)
 
 This P6 build includes the QWERTY/QR phone keyboard, phone Go, YouTube/TizenTube search shortcut, remote navigation fixes and optional projector-only Menu helper in one signed APK. Download the `.apk` under **Assets**; no source build is required. It is available from the contributor fork while [PR #2](https://github.com/smzaki101-lab/luma-launcher/pull/2) is reviewed. The PC-free Menu helper was tested on an AUMI P6 with existing root-capable debugging; other firmware may require an external bridge. [Original general release](https://github.com/smzaki101-lab/luma-launcher/releases/tag/v1.0.0).
 
 ![Luma home screen showing the cinematic wallpaper, weather and time widgets, and app dock](screenshots/home.png)
 
-**1.0.10 preview:** adds Wi-Fi password Save/Paste/Change/Forget for new users, video wallpapers with silent looping screensaver playback, Prime Video overlay search, Apple TV custom Search text support, and two original darker wallpapers. Apple TV search requires the app's Search screen and a working device-local Menu input connection. See [keyboard support](docs/PHONE-KEYBOARD.md) and [images and motion](docs/LOCAL-IMAGES-AND-MOTION.md).
+**1.0.11 preview:** adds local YouTube/TizenTube Continue Watching and Spotify Continue Listening with album art. Prime provides a labelled app-opening fallback when title metadata is unavailable. Enable Luma playback history in Android notification access, then play something and return Home; press Up on its dock tile. See [playback details](docs/LOCAL-PLAYBACK-HISTORY.md). The earlier Wi-Fi, video wallpaper, Prime search, Apple TV Search and darker wallpaper additions remain available.
 
 ## Explore Luma
 
@@ -36,7 +36,7 @@ Screenshots show one tested setup. Installed apps, content, wallpaper, weather a
 
 ## Install
 
-For the updated P6 build, download [Luma-P6-1.0.10.apk](https://github.com/argeojerwin-svg/luma-launcher/releases/download/v1.0.10-p6.1/Luma-P6-1.0.10.apk) and follow the [quick installation guide](docs/P6-QUICK-INSTALL.md). Open Luma from your existing app list before choosing any default Home app. The [installation and recovery guide](docs/INSTALL.md) also covers earlier signing keys and uninstalling.
+For the updated P6 build, download [Luma-P6-1.0.11.apk](https://github.com/argeojerwin-svg/luma-launcher/releases/download/v1.0.11-p6.1/Luma-P6-1.0.11.apk) and follow the [quick installation guide](docs/P6-QUICK-INSTALL.md). Open Luma from your existing app list before choosing any default Home app. The [installation and recovery guide](docs/INSTALL.md) also covers earlier signing keys and uninstalling.
 
 The application ID is `dev.luma.launcher`. Device compatibility beyond the original test hardware is still being established; see [known limitations](docs/KNOWN-LIMITATIONS.md). The P6-specific [Mac-assisted Menu bridge](docs/P6-MENU-BRIDGE.md) and [Windows equivalent](docs/P6-MENU-BRIDGE-WINDOWS.md) are optional and are not needed for normal Luma operation.
 

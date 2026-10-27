@@ -14,11 +14,19 @@ class TraktImageCache(context:Context){
     private val directory=File(context.cacheDir,"trakt-art").apply{mkdirs()}
     private val memory=object:LruCache<String,Bitmap>(8*1024*1024){override fun sizeOf(key:String,value:Bitmap)=value.allocationByteCount}
     @Synchronized fun load(url:String,maxEdge:Int=640):Bitmap?{
+        if(url.startsWith("file:")){
+            val path=runCatching{java.io.File(java.net.URI(url)).canonicalFile}.getOrNull()?:return null
+            val allowed=File(directory.parentFile?.parentFile,"files/media-resume").canonicalFile
+            if(!path.path.startsWith(allowed.path+File.separator))return null
+            val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true};BitmapFactory.decodeFile(path.path,bounds)
+            var sample=1;while(maxOf(bounds.outWidth,bounds.outHeight)/sample>maxEdge.coerceIn(320,1280))sample*=2
+            return BitmapFactory.decodeFile(path.path,BitmapFactory.Options().apply{inSampleSize=sample})
+        }
         val host=runCatching{URL(url).host.lowercase()}.getOrNull()?:return null
         if(!url.startsWith("https://") || !(host.endsWith(".trakt.tv") || host.endsWith(".mzstatic.com") ||
             host=="image.tmdb.org" || host.endsWith(".themoviedb.org") || host.endsWith(".media-amazon.com") ||
             host.endsWith(".ssl-images-amazon.com") || host.endsWith(".strem.io") ||
-            host=="images.metahub.space"))return null
+            host=="images.metahub.space" || host=="i.ytimg.com" || host=="img.youtube.com" || host=="i.scdn.co"))return null
         val edge=maxEdge.coerceIn(320,1280)
         val memoryKey="$url:$edge"
         memory.get(memoryKey)?.let{return it}
