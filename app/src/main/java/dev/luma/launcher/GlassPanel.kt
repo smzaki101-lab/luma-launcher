@@ -111,9 +111,19 @@ class GlassPanel(context: Context, wallpaper: WallpaperView, prefs: Preferences,
             text=subtitle.substringBefore(" · ");setTextColor(0xB9EAF1FA.toInt());textSize=14f
             setSingleLine(true);ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false
         },LinearLayout.LayoutParams(-1,29.dp))
+        val music=MediaResumeSource.read(context)
+            .firstOrNull{MediaResumePolicy.labels[it.sourcePackage]=="Spotify"}
+            ?.takeIf{MediaResumeSource.musicPlayback(context,it)!=null}
+            ?.let{NowPlayingControlView(context,it)}
+        music?.let{
+            card.addView(it,LinearLayout.LayoutParams(-1,81.dp).apply{bottomMargin=7.dp})
+            val safeY=maxOf(20.dp,resources.displayMetrics.heightPixels*prefs.number("safe",5)/100)
+            card.layoutParams.height=minOf(resources.displayMetrics.heightPixels-2*safeY,650.dp)
+        }
         val scroll=ScrollView(context).apply{isVerticalScrollBarEnabled=false;clipToPadding=false;clipChildren=true;isFocusable=false}
         val items=LinearLayout(context).apply{orientation=LinearLayout.VERTICAL;clipChildren=false;setPadding(2.dp,5.dp,2.dp,12.dp)}
-        scroll.addView(items);card.addView(scroll,LinearLayout.LayoutParams(-1,-2))
+        scroll.addView(items);card.addView(scroll,if(music==null)LinearLayout.LayoutParams(-1,-2)
+            else LinearLayout.LayoutParams(-1,0,1f))
         fun section(label:String){items.addView(TextView(context).apply{
             text=label;setTextColor(0xAFFFFFFF.toInt());textSize=12f;letterSpacing=.12f
             typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL);includeFontPadding=false;gravity=Gravity.BOTTOM
@@ -144,6 +154,14 @@ class GlassPanel(context: Context, wallpaper: WallpaperView, prefs: Preferences,
             b.nextFocusDownId=if(i<=1 && buttons.size>2)buttons[2].id else buttons[(i+1).coerceAtMost(buttons.lastIndex)].id
             b.nextFocusLeftId=if(i==1)buttons[0].id else b.id
             b.nextFocusRightId=if(i==0 && buttons.size>1)buttons[1].id else b.id
+        }
+        music?.let{row->
+            row.play.id=View.generateViewId();row.next.id=View.generateViewId()
+            row.play.nextFocusUpId=row.play.id;row.next.nextFocusUpId=row.next.id
+            row.play.nextFocusDownId=buttons[0].id;row.next.nextFocusDownId=buttons[1].id
+            row.play.nextFocusLeftId=row.play.id;row.play.nextFocusRightId=row.next.id
+            row.next.nextFocusLeftId=row.play.id;row.next.nextFocusRightId=row.next.id
+            buttons[0].nextFocusUpId=row.play.id;buttons[1].nextFocusUpId=row.next.id
         }
     }
     fun focusAt(index: Int=0) { buttons.getOrNull(index.coerceIn(0,(buttons.size-1).coerceAtLeast(0)))?.requestFocus() }
