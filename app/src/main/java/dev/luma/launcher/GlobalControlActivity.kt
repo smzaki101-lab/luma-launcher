@@ -71,7 +71,13 @@ class GlobalControlActivity : Activity() {
             networkAction=PanelAction(NetworkState.current.detail){
                 finish();runCatching{startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))}
                     .onFailure{startActivity(Intent(Settings.ACTION_SETTINGS))}
-            },controlOpenMs=280,controlCloseMs=260)
+            },controlOpenMs=280,controlCloseMs=260,onNowPlayingOpen={sourcePackage->
+                val spotify=packageManager.getLeanbackLaunchIntentForPackage(sourcePackage)
+                    ?:packageManager.getLaunchIntentForPackage(sourcePackage)
+                if(spotify==null)Toast.makeText(this,"Spotify is unavailable",Toast.LENGTH_SHORT).show()
+                else runCatching{startActivity(spotify);finish()}
+                    .onFailure{Toast.makeText(this,"Could not open Spotify",Toast.LENGTH_SHORT).show()}
+            })
         sheet.setClockText(android.text.format.DateFormat.getTimeFormat(this).format(Date()))
         root.addView(sheet, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)

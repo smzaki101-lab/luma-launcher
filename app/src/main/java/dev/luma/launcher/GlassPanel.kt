@@ -15,7 +15,8 @@ data class PanelAction(val title: String, val action: () -> Unit)
 class GlassPanel(context: Context, wallpaper: WallpaperView, prefs: Preferences,
     title: String, subtitle: String, actions: List<PanelAction>, compact: Boolean = false,
     networkAction:PanelAction?=null, private val controlOpenMs:Long=220,
-    private val controlCloseMs:Long=190) : FrameLayout(context) {
+    private val controlCloseMs:Long=190,
+    private val onNowPlayingOpen:((String)->Unit)?=null) : FrameLayout(context) {
     val buttons=mutableListOf<View>()
     private lateinit var card:LinearLayout
     private var clockLabel:TextView?=null
@@ -114,7 +115,7 @@ class GlassPanel(context: Context, wallpaper: WallpaperView, prefs: Preferences,
         val music=MediaResumeSource.read(context)
             .firstOrNull{MediaResumePolicy.labels[it.sourcePackage]=="Spotify"}
             ?.takeIf{MediaResumeSource.musicPlayback(context,it)!=null}
-            ?.let{NowPlayingControlView(context,it)}
+            ?.let{NowPlayingControlView(context,it){sourcePackage->onNowPlayingOpen?.invoke(sourcePackage)}}
         music?.let{
             card.addView(it,LinearLayout.LayoutParams(-1,81.dp).apply{bottomMargin=7.dp})
             val safeY=maxOf(20.dp,resources.displayMetrics.heightPixels*prefs.number("safe",5)/100)
@@ -156,12 +157,14 @@ class GlassPanel(context: Context, wallpaper: WallpaperView, prefs: Preferences,
             b.nextFocusRightId=if(i==0 && buttons.size>1)buttons[1].id else b.id
         }
         music?.let{row->
-            row.play.id=View.generateViewId();row.next.id=View.generateViewId()
+            row.cover.id=View.generateViewId();row.play.id=View.generateViewId();row.next.id=View.generateViewId()
+            row.cover.nextFocusUpId=row.cover.id;row.cover.nextFocusDownId=buttons[0].id
+            row.cover.nextFocusLeftId=row.cover.id;row.cover.nextFocusRightId=row.play.id
             row.play.nextFocusUpId=row.play.id;row.next.nextFocusUpId=row.next.id
             row.play.nextFocusDownId=buttons[0].id;row.next.nextFocusDownId=buttons[1].id
-            row.play.nextFocusLeftId=row.play.id;row.play.nextFocusRightId=row.next.id
+            row.play.nextFocusLeftId=row.cover.id;row.play.nextFocusRightId=row.next.id
             row.next.nextFocusLeftId=row.play.id;row.next.nextFocusRightId=row.next.id
-            buttons[0].nextFocusUpId=row.play.id;buttons[1].nextFocusUpId=row.next.id
+            buttons[0].nextFocusUpId=row.cover.id;buttons[1].nextFocusUpId=row.next.id
         }
     }
     fun focusAt(index: Int=0) { buttons.getOrNull(index.coerceIn(0,(buttons.size-1).coerceAtLeast(0)))?.requestFocus() }

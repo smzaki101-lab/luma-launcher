@@ -331,7 +331,11 @@ class LauncherActivity : Activity() {
         panel?.let {root.removeView(it)}
         home.descendantFocusability=android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
         panel=GlassPanel(this,wallpaper,preferences,title,subtitle,actions,compact,
-            if(title=="Control Centre")PanelAction(NetworkState.current.detail){openSettings(Settings.ACTION_WIFI_SETTINGS)} else null).also {
+            if(title=="Control Centre")PanelAction(NetworkState.current.detail){openSettings(Settings.ACTION_WIFI_SETTINGS)} else null,
+            onNowPlayingOpen={sourcePackage->
+                installed.firstOrNull{it.id==sourcePackage}?.let{app->closePanel(false);launch(app)}
+                    ?:toast("Spotify is unavailable")
+            }).also {
             root.addView(it,FrameLayout.LayoutParams(-1,-1));it.enter(preferences.motion!=0);it.focusAt(focus)
         }
         panelBack=back

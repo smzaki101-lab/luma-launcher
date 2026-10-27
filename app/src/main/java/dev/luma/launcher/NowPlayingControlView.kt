@@ -15,12 +15,14 @@ import android.widget.TextView
 import java.io.File
 
 /** Compact, session-backed music controls for the Control Centre. */
-internal class NowPlayingControlView(context:Context, initial:ContinueItem):LinearLayout(context){
+internal class NowPlayingControlView(context:Context, initial:ContinueItem,
+    private val openSpotify:(String)->Unit):LinearLayout(context){
     private var item=initial
     private var coverPath=""
     private var coverRequest=0
-    private val cover=ImageView(context).apply{scaleType=ImageView.ScaleType.CENTER_CROP;clipToOutline=true
-        background=GradientDrawable().apply{setColor(0x55526779);cornerRadius=12.dp.toFloat()}}
+    val cover=ImageView(context).apply{scaleType=ImageView.ScaleType.CENTER_CROP;clipToOutline=true
+        background=GradientDrawable().apply{setColor(0x55526779);cornerRadius=12.dp.toFloat()}
+        isFocusable=true;isClickable=true;contentDescription="Open Spotify"}
     private val title=TextView(context).apply{setTextColor(Color.WHITE);textSize=16f;maxLines=1
         ellipsize=android.text.TextUtils.TruncateAt.END;typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL);includeFontPadding=false}
     private val artist=TextView(context).apply{setTextColor(0xBFE9F2FF.toInt());textSize=13f;maxLines=1
@@ -40,7 +42,7 @@ internal class NowPlayingControlView(context:Context, initial:ContinueItem):Line
     }
     init{
         orientation=HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
-        setPadding(11.dp,7.dp,10.dp,7.dp)
+        setPadding(11.dp,7.dp,12.dp,7.dp)
         background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
             intArrayOf(0x57DDEEFF,0x267D98B7,0x24465B75)).apply{
             cornerRadius=19.dp.toFloat();setStroke(1.dp,0x35FFFFFF)
@@ -52,8 +54,14 @@ internal class NowPlayingControlView(context:Context, initial:ContinueItem):Line
         labels.addView(title,LayoutParams(-1,23.dp))
         labels.addView(artist,LayoutParams(-1,19.dp))
         addView(labels,LayoutParams(0,-1,1f).apply{rightMargin=8.dp})
-        addView(play,LayoutParams(38.dp,38.dp).apply{rightMargin=5.dp})
+        addView(play,LayoutParams(38.dp,38.dp).apply{rightMargin=9.dp})
         addView(next,LayoutParams(38.dp,38.dp))
+        cover.setOnFocusChangeListener{_,focused->
+            cover.foreground=if(focused)GradientDrawable().apply{
+                setColor(0x20FFFFFF);cornerRadius=12.dp.toFloat();setStroke(2.dp,0xD5F0FAFF.toInt())
+            }else null
+        }
+        cover.setOnClickListener{openSpotify(item.sourcePackage)}
         play.setOnClickListener{
             val wasPlaying=MediaResumeSource.musicPlayback(context,item)?.playing==true
             if(MediaResumeSource.controlMusic(context,item,false)){
@@ -104,8 +112,11 @@ internal class NowPlayingControlView(context:Context, initial:ContinueItem):Line
             cornerRadius=14.dp.toFloat();setStroke(1.dp,if(focused)0xBDEAF8FF.toInt() else 0x35FFFFFF)
         }
         background=surface(false)
-        setOnFocusChangeListener{_,focused->background=surface(focused);animate().cancel()
-            animate().scaleX(if(focused)1.06f else 1f).scaleY(if(focused)1.06f else 1f).setDuration(150).start()}
+        setOnFocusChangeListener{_,focused->
+            animate().cancel()
+            scaleX=1f;scaleY=1f
+            background=surface(focused)
+        }
     }
     private val Int.dp get()=(this*resources.displayMetrics.density).toInt()
 }
