@@ -54,7 +54,8 @@ class WallpaperRepository(private val context: Context) {
             7 -> { matrix.setRotate(270f); matrix.postScale(-1f,1f) }; 8 -> matrix.setRotate(270f) }
         return if (!matrix.isIdentity) Bitmap.createBitmap(decoded,0,0,decoded.width,decoded.height,matrix,true) else decoded
     }
-    private fun soften(source: Bitmap): Bitmap {
+    companion object {
+    fun soften(source: Bitmap): Bitmap {
         val w = 96; val h = max(1, source.height * w / source.width)
         val small = Bitmap.createScaledBitmap(source, w, h, true)
         val input = IntArray(w*h); small.getPixels(input,0,w,0,0,w,h)
@@ -73,6 +74,7 @@ class WallpaperRepository(private val context: Context) {
             }
         }
         return Bitmap.createBitmap(input,w,h,Bitmap.Config.ARGB_8888)
+    }
     }
     fun trimMemory() { cache.evictAll() }
     fun close() { generation++; executor.shutdownNow(); cache.evictAll() }

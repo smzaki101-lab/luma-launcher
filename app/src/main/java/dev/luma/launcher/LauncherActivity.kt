@@ -491,10 +491,13 @@ class LauncherActivity : Activity() {
             return
         }
         io.execute{val art=runCatching{traktImages.load(item.imageUrl,1280)}.getOrNull()
+            val youtube=MediaResumePolicy.labels[item.sourcePackage]=="YouTube"
+            // Decode and soften off the UI thread; keep preview cards and labels sharp.
+            val soft=art?.let{if(youtube)WallpaperRepository.soften(it)
+                else android.graphics.Bitmap.createScaledBitmap(it,96,(it.height*96/it.width).coerceAtLeast(1),true)}
             main.post{if(request==cinematicImageRequest && cinematic!=null && !cinematicClosing){
-                if(art!=null){
-                    val soft=android.graphics.Bitmap.createScaledBitmap(art,96,(art.height*96/art.width).coerceAtLeast(1),true)
-                    transitionBackdrop(if(art.width*1f/art.height<1.2f)soft else art,soft)
+                if(art!=null && soft!=null){
+                    transitionBackdrop(if(youtube || art.width*1f/art.height<1.2f)soft else art,soft)
                 }else{
                     val base=cinematicWallpaper;val frost=cinematicFrost
                     if(base!=null && frost!=null)transitionBackdrop(base,frost)
