@@ -53,3 +53,7 @@ The project uses Gradle 8.9 and can also be opened in Android Studio. Production
 For PowerShell commands, see [Windows development](docs/WINDOWS-DEVELOPMENT.md). To work on Luma together, see [contributing](CONTRIBUTING.md).
 
 Luma is published under the [Apache License 2.0](LICENSE). “Liquid Glass” and “tvOS 26” describe the design inspiration, not the origin of this app. Luma is independent and is not affiliated with or endorsed by Apple, Google, Stremio or any streaming provider.
+
+### Stremio Auto contributor preview
+
+For projector-only automatic source recommendations and manual fallback in Stremio, see the [Stremio Auto setup and test notes](docs/STREMIO-AUTO.md). This optional preview requires its own add-on setup and does not guarantee uninterrupted playback.

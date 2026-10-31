@@ -92,6 +92,7 @@ class LauncherActivity : Activity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         LocalMenuService.resumeIfEnabled(this)
+        StremioAutoService.resume(this)
         if(intent?.action==ACTION_GLOBAL_CONTROL)pendingGlobalTarget=intent.getStringExtra(EXTRA_GLOBAL_TARGET)
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         immersive()
@@ -182,6 +183,7 @@ class LauncherActivity : Activity() {
             "screensaver"->saver.start()
             "more"->moreControls()
             "global_menu_settings"->globalControlSettings()
+            "stremio_auto"->stremioAutoSettings()
         }
     }
     @Suppress("DEPRECATION") private fun immersive() {
@@ -378,6 +380,7 @@ class LauncherActivity : Activity() {
             action("Selected tile  ›") {home.focusedApp?.let{contextMenu(it)} ?: home.focusedFolder?.let{folderOptions(it)} ?:toast("Focus an app tile first.")},
             action("Continue Watching  ›") {showContinue()},
             action("Recently Used  ›") {recentApps()},
+            action("Stremio Auto · ${if(StremioAutoService.enabled(this))"On" else "Off"}  ›"){stremioAutoSettings()},
             action("Expand Top Shelf  ›") {home.focusedApp?.let{expandShelf(it)}?:toast("Focus an app tile first.")},
             action("Apps  ›") {appsSection()},
             action("${networkStatus()}  ›") {openSettings(Settings.ACTION_WIFI_SETTINGS)},
@@ -637,8 +640,44 @@ class LauncherActivity : Activity() {
             action("Restore default appearance"){preferences.resetAppearance();loadedWallpaper="\u0000";rebuild();settings(14)},
             action("Weather · ${weather.location}  ›"){weatherSettings()},
             action("Recently Used · ${if(RecentApps.enabled(preferences))"On" else "Off"}  ›"){recentSettings()},
+            action("Stremio Auto · ${if(StremioAutoService.enabled(this))"On" else "Off"}  ›"){stremioAutoSettings()},
             action("Continue Watching · ${if(!trakt.connected)"Not connected" else if(trakt.cached.isEmpty())"Unavailable" else "Ready"}  ›"){continueSettings()}
         ),back={controlCentre()},focus=focus)
+    }
+    private fun stremioAutoSettings(){
+        val sources=StremioAutoService.readSources(this)
+        val rows=mutableListOf(
+            action("Auto recommendations · ${if(StremioAutoService.enabled(this))"On" else "Off"}"){
+                if(sources.isEmpty() && !StremioAutoService.enabled(this))toast("Add a source manifest first")
+                else StremioAutoService.setEnabled(this,!StremioAutoService.enabled(this))
+                stremioAutoSettings()
+            },
+            action("Install Luma Auto in Stremio  ›"){
+                if(!StremioAutoService.enabled(this)){toast("Enable Auto first");return@action}
+                val link=StremioAutoService.url(this)
+                getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("Luma Auto add-on",link))
+                showPanel("Install Luma Auto",listOf(
+                    action("Open Stremio"){
+                        installed.firstOrNull{it.id=="com.stremio.one"}?.let{apps.launch(it)}
+                    },action("Back"){stremioAutoSettings()}
+                ),"Address copied to the projector clipboard. In Stremio, open Add-ons → Add addon, paste this HTTP address and choose Add, then Install. Keep http://: Stremio's external install links change it to HTTPS.\n\n$link",back={stremioAutoSettings()})
+            },
+            action("Add source manifest  ›"){
+                GlassNameDialog.show(this,wallpaper,preferences,"Source manifest URL (HTTPS)","",2048){value->
+                    runCatching{StremioAutoService.saveSources(this,(sources+value.trim()).joinToString("\n"))}
+                        .onFailure{toast("Use a complete HTTPS manifest.json URL; maximum four sources")}
+                    stremioAutoSettings()
+                }
+            },
+            action("Refresh status"){stremioAutoSettings()}
+        )
+        sources.forEachIndexed{index,source->rows.add(action("Remove source ${index+1} · ${Uri.parse(source).host}"){
+            if(sources.size==1){StremioAutoService.setEnabled(this,false);java.io.File(filesDir,"stremio-auto-sources.json").delete()}
+            else StremioAutoService.saveSources(this,sources.filterIndexed{i,_->i!=index}.joinToString("\n"))
+            stremioAutoSettings()
+        })}
+        showPanel("Stremio Auto",rows,
+            "${StremioAutoService.status(this)}\n\nSelect Auto in Stremio's source list. Chooses up to 1080p SDR using an HTTP speed estimate, reported quality and peers. Torrent speeds vary; switching and uninterrupted playback are not guaranteed. Original source choices remain available. Speed checks download up to 2 MB every 10 minutes while in use.\n\nRuns on this projector only. Source URLs stay private here. Disable here and uninstall Luma Auto in Stremio to remove it.",back={settings()})
     }
     private fun continueSettings(){
         val cached=trakt.cached
@@ -936,6 +975,7 @@ class LauncherActivity : Activity() {
         val store=installed.firstOrNull{it.id=="com.android.vending"}
         showPanel("Apps",(if(store!=null)listOf(action("Open Google Play Store  ›"){closePanel(false);launch(store)})else emptyList())+listOf(
             action("Recently Used  ›"){recentApps()},
+            action("Stremio Auto · ${if(StremioAutoService.enabled(this))"On" else "Off"}  ›"){stremioAutoSettings()},
             action("Search apps  ›"){searchApps()},
             action("App Management  ›"){appManagement()},
             action("Hidden applications  ›"){managedApps(true)},
