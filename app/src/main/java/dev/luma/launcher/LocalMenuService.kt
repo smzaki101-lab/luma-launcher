@@ -113,6 +113,9 @@ class LocalMenuService:Service(){
 
 class LocalMenuBootReceiver:BroadcastReceiver(){
     override fun onReceive(context:Context,intent:Intent){
-        if(intent.action in listOf(Intent.ACTION_BOOT_COMPLETED,Intent.ACTION_MY_PACKAGE_REPLACED))LocalMenuService.resumeIfEnabled(context)
+        if(intent.action in listOf(Intent.ACTION_BOOT_COMPLETED,Intent.ACTION_MY_PACKAGE_REPLACED)){
+            LocalMenuService.resumeIfEnabled(context)
+            StremioAutoService.resume(context)
+        }
     }
 }
