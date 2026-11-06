@@ -47,6 +47,9 @@
         <service android:name=".LocalMenuService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled on-device recovery of the P6 remote Menu listener" />
         </service>
+        <service android:name=".StremioAutoService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled loopback Stremio addon providing on-device source recommendations" />
+        </service>
         <receiver android:name=".LocalMenuBootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
