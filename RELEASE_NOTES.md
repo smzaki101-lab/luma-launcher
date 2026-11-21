@@ -12,3 +12,5 @@ The signed APK upgrades previous public signed releases in place. Debug-signed d
 Phone remote setup and cross-app controls require optional local debugging support on compatible devices. Cross-app support varies. See docs/PHONE-REMOTE.md. Existing system launcher remains intact.
 
 Apple TV input compatibility: swipes move native focus, taps select, and OK follows the real press/release duration for show menus. This app does not expose tile bounds, so it uses native focus rather than a free-position pointer. Two-finger scrolling, tapping, swiping and held OK were confirmed on the owner's device. Other apps retain their existing pointer handling.
+
+- Consistent press animations on all phone buttons and a white touchpad ring while in use.

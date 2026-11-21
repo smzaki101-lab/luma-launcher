@@ -80,7 +80,6 @@
     @keyframes backdrop-in { from { background:#0000; } to { background:#0008; } }
     @keyframes backdrop-out { from { background:#0008; } to { background:#0000; } }
     .mode-bar button { transition:background 160ms ease,color 160ms ease,transform 100ms ease; }
-    #openTyping:active, #closeTyping:active, #closeApps:active, .app-launch:active { transform:scale(.96); }
     @media (prefers-reduced-motion:reduce) { dialog::backdrop { animation:none; } }
     .sheet-heading { display:flex; align-items:center; justify-content:space-between; }
     .sheet-heading h2 { font-size:21px; margin:0; }
@@ -104,6 +103,16 @@
     #remoteStatus[data-health="waiting"] { color:#e4c78e; }
     #remoteStatus[data-health="offline"] { color:#edaca7; }
     [data-command] { -webkit-user-select:none; user-select:none; }
+    /* Visual feedback never waits for, or delays, the remote command. */
+    button, .mode-bar button { transform-origin:center; transition:transform 220ms cubic-bezier(.18,.8,.25,1.12),background-color 140ms ease,box-shadow 180ms ease,filter 140ms ease; }
+    button:not(:disabled):active, button:not(:disabled)[data-pressed] { transform:translateY(.5px) scale(.95); filter:brightness(1.12); transition-duration:70ms; transition-timing-function:cubic-bezier(.2,.7,.2,1); }
+    .remote button:not(:disabled):active, .remote button:not(:disabled)[data-pressed], .app-launch:not(:disabled):active, .app-launch:not(:disabled)[data-pressed] { background-color:#ffffff24; box-shadow:inset 0 1px 0 #ffffff38,inset 0 0 0 1px #ffffff16; }
+    button:focus-visible { outline:2px solid #bcd8ff; outline-offset:3px; }
+    #touchpad { position:relative; }
+    #touchpad::after { content:""; position:absolute; inset:-1px; border:2px solid #ffffffe0; border-radius:inherit; box-shadow:0 0 0 1px #ffffff18,0 0 14px #ffffff1c,inset 0 0 9px #ffffff0d; opacity:0; pointer-events:none; transition:opacity 200ms cubic-bezier(.2,.8,.2,1); }
+    #touchpad[data-in-use]::after { opacity:1; transition-duration:90ms; }
+    @media (prefers-reduced-motion:reduce) { #touchpad::after { transition:none; } }
+    @media (prefers-reduced-motion:reduce) { button, .mode-bar button { transition:none; } button:not(:disabled):active, button:not(:disabled)[data-pressed] { transform:none; } }
   </style>
 </head>
 <body>
@@ -148,6 +157,27 @@
   </dialog>
 </main>
 <script nonce="__CSP_NONCE__">
+  // Delegated feedback also covers SVG icons and dynamically loaded app buttons.
+  // It observes input only; command delivery and hold timing remain independent.
+  const pressedButtons = new Map();
+  function releaseButton(event) {
+    const button = pressedButtons.get(event.pointerId);
+    pressedButtons.delete(event.pointerId);
+    if (button && !Array.from(pressedButtons.values()).includes(button)) button.removeAttribute('data-pressed');
+  }
+  function clearButtonFeedback() {
+    pressedButtons.forEach(button => button.removeAttribute('data-pressed'));
+    pressedButtons.clear();
+  }
+  document.addEventListener('pointerdown', event => {
+    const button = event.target.closest?.('button');
+    if (!button || button.disabled || event.button > 0) return;
+    pressedButtons.set(event.pointerId, button); button.setAttribute('data-pressed', '');
+  }, {capture:true,passive:true});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(name => document.addEventListener(name, releaseButton, {capture:true,passive:true}));
+  window.addEventListener('blur', clearButtonFeedback);
+  window.addEventListener('pagehide', clearButtonFeedback);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) clearButtonFeedback(); });
   const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sheetAnimations = new WeakMap();
   function showSheet(sheet) {
@@ -489,6 +519,7 @@
   touchpad.addEventListener('pointerdown', event => {
     if (!remoteReady || contacts.size >= 2) return;
     contacts.set(event.pointerId, {x:event.clientX,y:event.clientY}); touchpad.setPointerCapture(event.pointerId);
+    touchpad.setAttribute('data-in-use', '');
     if (contacts.size === 1) {
       gesture = 'pointer'; pointerEpoch++; pointer = event.pointerId;
       if (focusNavigation) { x = 500; y = 500; control('focusStart'); }
@@ -527,6 +558,7 @@
     if (!contacts.has(event.pointerId)) return;
     const tap = !cancelled && gesture === 'pointer' && contacts.size === 1 && distance < 8;
     contacts.delete(event.pointerId);
+    if (!contacts.size) touchpad.removeAttribute('data-in-use');
     if (gesture === 'scroll') { scrollEpoch++; scrollPending = 0; scrollCarry = 0; }
     gesture = contacts.size ? 'blocked' : 'idle'; pointer = null;
     if (tap) control(`tap:${Math.round(x)},${Math.round(y)}`);
@@ -536,6 +568,8 @@
   touchpad.addEventListener('lostpointercapture', event => endContact(event,true));
   touchpad.addEventListener('contextmenu', event => event.preventDefault());
   function stopInteractions() {
+    touchpad.removeAttribute('data-in-use');
+    clearButtonFeedback();
     repeatStops.forEach(stop => stop()); cancelCentre(); cancelOk();
     contacts.clear(); gesture = 'idle'; pointer = null;
     pointerEpoch++; scrollEpoch++; movePending = null; scrollPending = 0; scrollCarry = 0;
