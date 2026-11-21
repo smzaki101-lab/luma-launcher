@@ -36,13 +36,71 @@ object PhoneInputBridge {
             if(hovering){mouse(MotionEvent.ACTION_HOVER_EXIT);hovering=false}
             mouse(MotionEvent.ACTION_SCROLL,scroll=amount)
         }
+        var focusNavigation=false
+        var modeChecked=0L
+        var navPoint=false;var navX=0f;var navY=0f;var navAt=0L
+        fun updateMode(){
+            val now=SystemClock.uptimeMillis()
+            if(now-modeChecked<150)return
+            modeChecked=now
+            val next=runCatching{
+            val service=Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)
+            val method=service.javaClass.methods.first{it.name=="getTasks" && it.parameterTypes.firstOrNull()==Int::class.javaPrimitiveType}
+            val params=method.parameterTypes.mapIndexed{i,t->if(t==Boolean::class.javaPrimitiveType)false else if(i==0)1 else 0}.toTypedArray()
+            val task=(method.invoke(service,*params) as? List<*>)?.firstOrNull() as? android.app.ActivityManager.RunningTaskInfo
+            task?.topActivity?.packageName=="com.apple.atve.androidtv.appletv"
+            }.getOrDefault(false)
+            if(next!=focusNavigation){navPoint=false;navX=0f;navY=0f;hovering=false}
+            focusNavigation=next
+        }
+        val holdWorker=java.util.concurrent.Executors.newSingleThreadScheduledExecutor{r->Thread(r,"Luma held OK").apply{isDaemon=true}}
+        val selectLock=Any()
+        var selectStarted=0L
+        var selectRepeat:java.util.concurrent.ScheduledFuture<*>?=null
+        var selectRelease:java.util.concurrent.ScheduledFuture<*>?=null
+        val physical=InputDevice.getDeviceIds().map{InputDevice.getDevice(it)}.filterNotNull().firstOrNull{it.name=="sunxi-ir-uinput"}
+        fun selectEvent(action:Int,repeat:Int=0,flags:Int=0){
+            send(KeyEvent(selectStarted,SystemClock.uptimeMillis(),action,KeyEvent.KEYCODE_DPAD_CENTER,repeat,0,
+                physical?.id?:android.view.KeyCharacterMap.VIRTUAL_KEYBOARD,if(physical!=null)23 else 0,
+                flags,if(physical!=null)InputDevice.SOURCE_KEYBOARD else InputDevice.SOURCE_DPAD))
+        }
+        fun releaseSelect(cancelled:Boolean=false){synchronized(selectLock){
+            selectRepeat?.cancel(false);selectRelease?.cancel(false)
+            if(selectStarted!=0L)try{selectEvent(KeyEvent.ACTION_UP,flags=if(cancelled)KeyEvent.FLAG_CANCELED else 0)}finally{selectStarted=0L}
+        }}
+        fun startSelect(){synchronized(selectLock){
+            if(selectStarted!=0L)return
+            selectStarted=SystemClock.uptimeMillis()
+            selectEvent(KeyEvent.ACTION_DOWN)
+            selectRepeat=holdWorker.schedule({synchronized(selectLock){if(selectStarted!=0L)runCatching{selectEvent(KeyEvent.ACTION_DOWN,1,KeyEvent.FLAG_LONG_PRESS)}}},500,java.util.concurrent.TimeUnit.MILLISECONDS)
+            selectRelease=holdWorker.schedule({runCatching{releaseSelect(true)}},4,java.util.concurrent.TimeUnit.SECONDS)
+        }}
+        fun keyPress(key:Int){
+            if(key==KeyEvent.KEYCODE_DPAD_CENTER){startSelect();releaseSelect();return}
+            val now=SystemClock.uptimeMillis()
+            send(KeyEvent(now,now,KeyEvent.ACTION_DOWN,key,0,0,android.view.KeyCharacterMap.VIRTUAL_KEYBOARD,0,0,InputDevice.SOURCE_KEYBOARD))
+            send(KeyEvent(now,now,KeyEvent.ACTION_UP,key,0,0,android.view.KeyCharacterMap.VIRTUAL_KEYBOARD,0,0,InputDevice.SOURCE_KEYBOARD))
+        }
         fun command(value:String):Boolean{
+            updateMode()
             if(value=="ping")return true
+            if(value=="focusStart"){navPoint=false;navX=0f;navY=0f;return true}
+            if(value=="selectDown"){startSelect();return true}
+            if(value=="selectUp" || value=="selectCancel"){releaseSelect(value=="selectCancel");return true}
+            if(value!="ping" && value!="selectDown" && value!="selectUp" && value!="selectCancel" && selectStarted!=0L)releaseSelect(true)
+            if(value=="longOk"){
+                startSelect()
+                try{Thread.sleep(1800)}finally{releaseSelect()}
+                return true
+            }
             val key=when(value){"up"->19;"down"->20;"left"->21;"right"->22;"ok"->23;"back"->4;"home"->3;"recents"->187;"settings"->176;"volumeUp"->24;"volumeDown"->25;"mute"->164;"power"->26;else->null}
             if(key!=null){
-                val now=SystemClock.uptimeMillis()
-                send(KeyEvent(now,now,KeyEvent.ACTION_DOWN,key,0,0,android.view.KeyCharacterMap.VIRTUAL_KEYBOARD,0,0,InputDevice.SOURCE_KEYBOARD))
-                send(KeyEvent(now,now,KeyEvent.ACTION_UP,key,0,0,android.view.KeyCharacterMap.VIRTUAL_KEYBOARD,0,0,InputDevice.SOURCE_KEYBOARD))
+                keyPress(key)
+                return true
+            }
+            if(focusNavigation && (value=="scrollUp" || value=="scrollDown" || value.startsWith("scroll:"))){
+                val amount=when(value){"scrollUp"->1;"scrollDown"->-1;else->value.substringAfter(':').toIntOrNull()?.takeIf{it in -6..6 && it!=0}?:return false}
+                repeat(kotlin.math.abs(amount).coerceAtMost(3)){keyPress(if(amount>0)KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN)}
                 return true
             }
             if(value=="scrollUp" || value=="scrollDown"){scroll(if(value=="scrollUp")3f else -3f);return true}
@@ -53,7 +111,22 @@ object PhoneInputBridge {
             if(!Regex("(move|tap):[0-9]{1,4},[0-9]{1,4}").matches(value))return false
             val point=value.substringAfter(':').split(',').map{it.toInt()}
             if(point.any{it !in 0..1000})return false
-            x=point[0]*(width-1)/1000f;y=point[1]*(height-1)/1000f
+            val nextX=point[0]*(width-1)/1000f;val nextY=point[1]*(height-1)/1000f
+            if(focusNavigation){
+                if(value.startsWith("tap:"))keyPress(KeyEvent.KEYCODE_DPAD_CENTER)
+                else if(navPoint){
+                    navX+=nextX-x;navY+=nextY-y
+                    val now=SystemClock.uptimeMillis()
+                    if(now-navAt>=100 && (kotlin.math.abs(navX)>=75 || kotlin.math.abs(navY)>=60)){
+                        val horizontal=kotlin.math.abs(navX)/75>=kotlin.math.abs(navY)/60
+                        keyPress(if(horizontal){if(navX>0)KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT}else{if(navY>0)KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP})
+                        navX=0f;navY=0f;navAt=now
+                    }
+                }
+                navPoint=true;x=nextX;y=nextY
+                return true
+            }
+            x=nextX;y=nextY
             if(!hovering){mouse(MotionEvent.ACTION_HOVER_ENTER);hovering=true}
             mouse(MotionEvent.ACTION_HOVER_MOVE)
             if(value.startsWith("tap:")){
@@ -85,10 +158,11 @@ object PhoneInputBridge {
                     while(true){
                         val value=line()?:break
                         val ok=runCatching{command(value)}.onFailure{it.printStackTrace()}.getOrDefault(false)
-                        output.write((if(ok)"OK\n" else "ERROR\n").toByteArray());output.flush()
+                        output.write((if(ok){if(focusNavigation)"OK FOCUS\n" else "OK\n"}else "ERROR\n").toByteArray());output.flush()
                         last=SystemClock.uptimeMillis()
                     }
-                }}catch(_:SocketTimeoutException){}catch(_:java.io.IOException){}
+                    releaseSelect(true)
+                }}catch(_:SocketTimeoutException){releaseSelect(true)}catch(_:java.io.IOException){releaseSelect(true)}
             }
         }
     }

@@ -14,6 +14,8 @@ object FastPhoneInput {
     @Volatile private var available=false
     @Volatile private var lastAck=0L
     fun ready()=available && android.os.SystemClock.elapsedRealtime()-lastAck<20000
+    @Volatile private var focusNavigation=false
+    fun usesNativeFocus()=focusNavigation
     private var socket:Socket?=null
     private var reader:BufferedReader?=null
     private var output:OutputStream?=null
@@ -45,10 +47,12 @@ object FastPhoneInput {
     private fun send(value:String):Boolean{
         val target=output?:return false
         target.write((value+"\n").toByteArray());target.flush()
-        val ok=reader?.readLine()=="OK"
+        val ack=reader?.readLine()
+        val ok=ack=="OK" || ack=="OK FOCUS"
+        focusNavigation=ack=="OK FOCUS"
         available=ok
         if(ok)lastAck=android.os.SystemClock.elapsedRealtime()
         return ok
     }
-    @Synchronized fun close(){available=false;PhoneMouseCursor.close();runCatching{socket?.close()};socket=null;reader=null;output=null}
+    @Synchronized fun close(){available=false;focusNavigation=false;PhoneMouseCursor.close();runCatching{socket?.close()};socket=null;reader=null;output=null}
 }

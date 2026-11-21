@@ -344,6 +344,7 @@
 
     remoteAvailable = !!state.remote;
     remoteReady = remoteAvailable && state.inputReady !== false;
+    applyFocusMode(!!state.focusNavigation);
     remoteButtons.forEach(button => button.disabled = !(remoteReady || remoteAvailable && ['apps','home','controlCentre'].includes(button.dataset.command)));
     setHealth(remoteReady ? 'ready' : 'waiting');
     if (!remoteReady) stopInteractions();
@@ -359,7 +360,7 @@
       if (!remoteReady && !['home','controlCentre','appSwitcher'].includes(command)) return;
       try {
         const response = await request('/remote', { method: 'POST', body: command });
-        if (command.startsWith('move:')) setMagneticTarget((await response.json()).target);
+        if (command.startsWith('move:')) { const result = await response.json(); applyFocusMode(!!result.focusNavigation); setMagneticTarget(result.target); }
         else if (command.startsWith('scroll')) setMagneticTarget(null);
         lastControlMessage = command.startsWith('move:') ? 'Touchpad connected' : 'Sent · ' + command.split(':')[0];
       } catch (error) {
@@ -375,7 +376,7 @@
   remoteButtons.forEach(button => button.addEventListener('click', event => {
     if (button.dataset.command === 'apps') { openApps(); return; }
     if (button.dataset.command === 'controlCentre') { if (event.detail === 0) control('controlCentre'); return; }
-    if (['scrollUp','scrollDown','up','down','left','right','volumeUp','volumeDown'].includes(button.dataset.command)) return;
+    if (['ok','scrollUp','scrollDown','up','down','left','right','volumeUp','volumeDown'].includes(button.dataset.command)) return;
     if (button.dataset.command === 'power' && !confirm('Put the projector in standby? Use its physical remote to wake it.')) return;
     control(button.dataset.command);
   }));
@@ -395,6 +396,22 @@
   centreButton.addEventListener('pointercancel', cancelCentre);
   centreButton.addEventListener('lostpointercapture', cancelCentre);
   centreButton.addEventListener('contextmenu', event => event.preventDefault());
+  const okButton = document.querySelector('[data-command="ok"]');
+  okButton.title = 'OK · hold for show options';
+  let okHeld = false;
+  okButton.addEventListener('pointerdown', event => {
+    if (!remoteReady || okHeld) return;
+    okHeld = true; okButton.setPointerCapture(event.pointerId); control('selectDown');
+  });
+  okButton.addEventListener('pointerup', () => {
+    if (!okHeld) return;
+    okHeld = false; control('selectUp');
+  });
+  const cancelOk = () => { if (okHeld) { okHeld = false; control('selectCancel'); } };
+  okButton.addEventListener('pointercancel', cancelOk);
+  okButton.addEventListener('lostpointercapture', cancelOk);
+  okButton.addEventListener('contextmenu', event => event.preventDefault());
+  okButton.addEventListener('click', event => { if (event.detail === 0) control('ok'); });
   const repeatStops = [];
   function bindRepeat(button) {
     let held = false, repeatTimer, sequence = 0;
@@ -422,6 +439,13 @@
     button.addEventListener('click', event => { if (event.detail === 0) control(command); });
   }
   document.querySelectorAll('[data-command="up"], [data-command="down"], [data-command="left"], [data-command="right"], [data-command="volumeUp"], [data-command="volumeDown"], [data-command="scrollUp"], [data-command="scrollDown"]').forEach(bindRepeat);
+  let focusNavigation = false;
+  function applyFocusMode(enabled) {
+    if (focusNavigation === enabled) return;
+    focusNavigation = enabled; setMagneticTarget(null);
+    touchpad.textContent = enabled ? 'Swipe to move focus · tap to select' : 'One finger to point · two fingers to scroll';
+    touchpad.setAttribute('aria-label', enabled ? 'Apple TV: swipe to move focus, tap to select. Hold OK in Buttons for show options.' : 'Touchpad: one finger to move, two fingers to scroll, tap to click');
+  }
   const touchpad = document.querySelector('#touchpad');
   let pointer = null, lastX = 0, lastY = 0, distance = 0, x = 500, y = 500;
   let magnet = null, releasedMagnet = '', intentX = 500, intentY = 500;
@@ -467,6 +491,7 @@
     contacts.set(event.pointerId, {x:event.clientX,y:event.clientY}); touchpad.setPointerCapture(event.pointerId);
     if (contacts.size === 1) {
       gesture = 'pointer'; pointerEpoch++; pointer = event.pointerId;
+      if (focusNavigation) { x = 500; y = 500; control('focusStart'); }
       intentX = x; intentY = y; lastX = event.clientX; lastY = event.clientY; distance = 0;
     } else {
       gesture = 'scroll'; pointerEpoch++; movePending = null;
@@ -511,7 +536,7 @@
   touchpad.addEventListener('lostpointercapture', event => endContact(event,true));
   touchpad.addEventListener('contextmenu', event => event.preventDefault());
   function stopInteractions() {
-    repeatStops.forEach(stop => stop()); cancelCentre();
+    repeatStops.forEach(stop => stop()); cancelCentre(); cancelOk();
     contacts.clear(); gesture = 'idle'; pointer = null;
     pointerEpoch++; scrollEpoch++; movePending = null; scrollPending = 0; scrollCarry = 0;
   }

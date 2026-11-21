@@ -117,7 +117,7 @@ object GlassNameDialog {
                         if(!disposed && request==generation && dialog.isShowing && session?.isOpen==true){
                             field.setText(incoming);field.setSelection(field.length());save.performClick()
                         }
-                    }},onRemote=PhoneRemoteControl.callback(activity),icon=activity.assets.open("luma-remote-icon.png").use{it.readBytes()},onInputReady={FastPhoneInput.ready()},onMagneticTarget={PhoneMouseCursor.magneticTarget()},onApps={PhoneRemoteControl.apps(activity)},onLaunch={PhoneRemoteControl.launch(activity,it)},onConnected={main.post{if(!disposed && request==generation)phoneTyping(true)}})
+                    }},onRemote=PhoneRemoteControl.callback(activity),icon=activity.assets.open("luma-remote-icon.png").use{it.readBytes()},onInputReady={FastPhoneInput.ready()},onFocusNavigation={FastPhoneInput.usesNativeFocus()},onMagneticTarget={PhoneMouseCursor.magneticTarget()},onApps={PhoneRemoteControl.apps(activity)},onLaunch={PhoneRemoteControl.launch(activity,it)},onConnected={main.post{if(!disposed && request==generation)phoneTyping(true)}})
                     PhoneRemoteControl.register(next)
                     created=next
                     val phoneUrl=PhoneRemoteService.url(activity)?:next.url

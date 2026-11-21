@@ -37,7 +37,8 @@ class PhoneTextSession(
     private val onConnected:(()->Unit)?=null,
     private val onPointer:((Boolean?)->String)?=null,
     private val onMagneticTarget:(()->String)?=null,
-    private val onInputReady:(()->Boolean)?=null
+    private val onInputReady:(()->Boolean)?=null,
+    private val onFocusNavigation:(()->Boolean)?=null
 ):Closeable {
     init{require(limit in 1..2048);require(lifetimeMillis>0);require(address is java.net.Inet4Address)}
     private val token=pairingToken?:randomToken(24)
@@ -133,7 +134,7 @@ class PhoneTextSession(
         val editor=if(textTarget==null)this else textTarget.invoke()?.takeIf{it.isOpen}
         if(method=="GET" && path=="/state"){
             val canType=editor?.let{it.textEnabled && !it.submitted}==true
-            reply(socket,200,"{\"title\":${json(editor?.title?:"Open a text field on the projector to type")},\"limit\":${editor?.limit?:limit},\"text\":${json(editor?.text.orEmpty())},\"textEnabled\":$canType,\"remote\":${onRemote!=null},\"inputReady\":${onInputReady?.invoke()?: (onRemote!=null)},\"permanent\":${textTarget!=null},\"editor\":${json(editor?.nonce.orEmpty())},\"target\":${onMagneticTarget?.invoke()?:"null"}}","application/json; charset=utf-8")
+            reply(socket,200,"{\"title\":${json(editor?.title?:"Open a text field on the projector to type")},\"limit\":${editor?.limit?:limit},\"text\":${json(editor?.text.orEmpty())},\"textEnabled\":$canType,\"remote\":${onRemote!=null},\"inputReady\":${onInputReady?.invoke()?: (onRemote!=null)},\"focusNavigation\":${onFocusNavigation?.invoke()?:false},\"permanent\":${textTarget!=null},\"editor\":${json(editor?.nonce.orEmpty())},\"target\":${onMagneticTarget?.invoke()?:"null"}}","application/json; charset=utf-8")
             onConnected?.invoke();return
         }
         if(method!="POST" || path !in listOf("/text","/submit","/remote","/disconnect","/launch","/pointer")){reply(socket,404,"Not found");return}
@@ -158,12 +159,12 @@ class PhoneTextSession(
             return
         }
         if(path=="/remote"){
-            val valid=value in setOf("up","down","left","right","ok","back","home","apps","recents","settings","volumeUp","volumeDown","mute","power","controlCentre","appSwitcher","scrollUp","scrollDown") ||
+            val valid=value in setOf("up","down","left","right","ok","longOk","selectDown","selectUp","selectCancel","focusStart","back","home","apps","recents","settings","volumeUp","volumeDown","mute","power","controlCentre","appSwitcher","scrollUp","scrollDown") ||
                 (value.startsWith("scroll:") && value.substringAfter(':').toIntOrNull()?.let{it in -6..6 && it!=0}==true) ||
                 Regex("(move|tap):[0-9]{1,4},[0-9]{1,4}").matches(value) && value.substringAfter(':').split(',').all{it.toInt() in 0..1000}
             if(!valid){reply(socket,400,"Unknown control");return}
             if(onRemote?.invoke(value)==true){
-                if(value.startsWith("move:"))reply(socket,200,"{\"target\":${onMagneticTarget?.invoke()?:"null"}}","application/json; charset=utf-8")
+                if(value.startsWith("move:"))reply(socket,200,"{\"target\":${onMagneticTarget?.invoke()?:"null"},\"focusNavigation\":${onFocusNavigation?.invoke()?:false}}","application/json; charset=utf-8")
                 else reply(socket,200,"OK")
             }else reply(socket,409,"Phone remote is unavailable on this projector")
             return

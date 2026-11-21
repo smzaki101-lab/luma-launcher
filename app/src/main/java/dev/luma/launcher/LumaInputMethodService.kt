@@ -296,7 +296,7 @@ class LumaInputMethodService:InputMethodService(){
                     if(editing && generation==request){phoneTyping(true);if(replaceFromPhone(value))status.setText(R.string.phone_keyboard_connected) else {phoneTyping(false);stopPhone();status.setText(R.string.keyboard_field_changed)}}
                 }},onExpired={main.post{if(generation==request){phoneTyping(false);stopPhone();status.setText(R.string.keyboard_expired)}}},onSubmit={value->main.post{
                     if(editing && generation==request && replaceFromPhone(value))confirm()
-                }},onRemote=PhoneRemoteControl.callback(this),icon=assets.open("luma-remote-icon.png").use{it.readBytes()},onInputReady={FastPhoneInput.ready()},onMagneticTarget={PhoneMouseCursor.magneticTarget()},onApps={PhoneRemoteControl.apps(this)},onLaunch={PhoneRemoteControl.launch(this,it)},onConnected={main.post{if(editing && generation==request)phoneTyping(true)}})
+                }},onRemote=PhoneRemoteControl.callback(this),icon=assets.open("luma-remote-icon.png").use{it.readBytes()},onInputReady={FastPhoneInput.ready()},onFocusNavigation={FastPhoneInput.usesNativeFocus()},onMagneticTarget={PhoneMouseCursor.magneticTarget()},onApps={PhoneRemoteControl.apps(this)},onLaunch={PhoneRemoteControl.launch(this,it)},onConnected={main.post{if(editing && generation==request)phoneTyping(true)}})
                 PhoneRemoteControl.register(next)
                 created=next
                 val phoneUrl=PhoneRemoteService.url(this)?:next.url

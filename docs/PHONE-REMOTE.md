@@ -32,3 +32,5 @@ Source entry points: `PhoneRemoteService.kt` (persistent local page), `PhoneText
 Touchpad opens by default. One finger points and taps; two fingers scroll. Existing scroll buttons remain. Hold arrows and volume to repeat; release, leave the page or lose connection to stop. Status distinguishes TV controls ready, controls reconnecting and offline. Scrolling clears native tile hover, Luma highlights and magnetic targeting; movement restores hover.
 
 Cross-app pointer highlights are optional, off by default and device-dependent. The on-device debugging helper has broad screen-structure access; Luma uses only control bounds and does not save screen text or screenshots. Unsupported controls retain the circle. Keep the phone link private on a trusted local network.
+
+Apple TV input compatibility: swipes move native focus, taps select, and OK follows the real press/release duration for show menus. This app does not expose tile bounds, so it uses native focus rather than a free-position pointer. Two-finger scrolling, tapping, swiping and held OK were confirmed on the owner's device. Other apps retain their existing pointer handling.

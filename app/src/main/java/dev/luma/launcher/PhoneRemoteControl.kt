@@ -68,8 +68,10 @@ object PhoneRemoteControl {
                 }.getOrDefault(false)
             }else{
             if(command=="scrollUp" || command=="scrollDown" || command.startsWith("scroll:"))UniversalPointer.pause()
-            if(command.startsWith("move:") || command.startsWith("tap:"))PhoneMouseCursor.move(app,command)
-            FastPhoneInput.command(app,command)
+            if((command.startsWith("move:") || command.startsWith("tap:")) && !FastPhoneInput.usesNativeFocus())PhoneMouseCursor.move(app,command)
+            val sent=FastPhoneInput.command(app,command)
+            if(FastPhoneInput.usesNativeFocus())UniversalPointer.pause()
+            sent
             }
         }
     }
